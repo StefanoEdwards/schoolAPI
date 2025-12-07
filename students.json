@@ -1,17 +1,122 @@
 [
-  { "id": 1, "firstName": "Ethan", "lastName": "Carver", "grade": 12, "studentNumber": "24581", "homeroom": "12A" },
-  { "id": 2, "firstName": "Maya", "lastName": "Singh", "grade": 11, "studentNumber": "25109", "homeroom": "11C" },
-  { "id": 3, "firstName": "Lucas", "lastName": "Bennett", "grade": 10, "studentNumber": "26344", "homeroom": "10B" },
-  { "id": 4, "firstName": "Ava", "lastName": "Morales", "grade": 9, "studentNumber": "27201", "homeroom": "9D" },
-  { "id": 5, "firstName": "Noah", "lastName": "Patel", "grade": 12, "studentNumber": "24592", "homeroom": "12B" },
-  { "id": 6, "firstName": "Jasmine", "lastName": "Wong", "grade": 11, "studentNumber": "25122", "homeroom": "11A" },
-  { "id": 7, "firstName": "Owen", "lastName": "Keller", "grade": 10, "studentNumber": "26311", "homeroom": "10C" },
-  { "id": 8, "firstName": "Chloe", "lastName": "Ramos", "grade": 9, "studentNumber": "27244", "homeroom": "9A" },
-  { "id": 9, "firstName": "Ryan", "lastName": "Stokes", "grade": 12, "studentNumber": "24533", "homeroom": "12C" },
-  { "id": 10, "firstName": "Emily", "lastName": "Tran", "grade": 11, "studentNumber": "25177", "homeroom": "11B" },
-  { "id": 11, "firstName": "Zara", "lastName": "Ali", "grade": 10, "studentNumber": "26371", "homeroom": "10A" },
-  { "id": 12, "firstName": "Liam", "lastName": "Harper", "grade": 9, "studentNumber": "27219", "homeroom": "9C" },
-  { "id": 13, "firstName": "Sophie", "lastName": "Tremblay", "grade": 12, "studentNumber": "24568", "homeroom": "12A" },
-  { "id": 14, "firstName": "Jacob", "lastName": "Olsen", "grade": 10, "studentNumber": "26355", "homeroom": "10D" },
-  { "id": 15, "firstName": "Hannah", "lastName": "Douglas", "grade": 11, "studentNumber": "25141", "homeroom": "11D" }
+  {
+    "id": 1,
+    "firstName": "Ethan",
+    "lastName": "Carver",
+    "grade": 12,
+    "studentNumber": "24581",
+    "homeroom": "12A"
+  },
+  {
+    "id": 2,
+    "firstName": "Maya",
+    "lastName": "Singh",
+    "grade": 11,
+    "studentNumber": "25109",
+    "homeroom": "11C"
+  },
+  {
+    "id": 3,
+    "firstName": "Lucas",
+    "lastName": "Bennett",
+    "grade": 10,
+    "studentNumber": "26344",
+    "homeroom": "10B"
+  },
+  {
+    "id": 4,
+    "firstName": "Ava",
+    "lastName": "Morales",
+    "grade": 9,
+    "studentNumber": "27201",
+    "homeroom": "9D"
+  },
+  {
+    "id": 5,
+    "firstName": "Noah",
+    "lastName": "Patel",
+    "grade": 12,
+    "studentNumber": "24592",
+    "homeroom": "12B"
+  },
+  {
+    "id": 6,
+    "firstName": "Jasmine",
+    "lastName": "Wong",
+    "grade": 11,
+    "studentNumber": "25122",
+    "homeroom": "11A"
+  },
+  {
+    "id": 7,
+    "firstName": "Owen",
+    "lastName": "Keller",
+    "grade": 10,
+    "studentNumber": "26311",
+    "homeroom": "10C"
+  },
+  {
+    "id": 8,
+    "firstName": "Chloe",
+    "lastName": "Ramos",
+    "grade": 9,
+    "studentNumber": "27244",
+    "homeroom": "9A"
+  },
+  {
+    "id": 9,
+    "firstName": "Ryan",
+    "lastName": "Stokes",
+    "grade": 12,
+    "studentNumber": "24533",
+    "homeroom": "12C"
+  },
+  {
+    "id": 10,
+    "firstName": "Emily",
+    "lastName": "Tran",
+    "grade": 11,
+    "studentNumber": "25177",
+    "homeroom": "11B"
+  },
+  {
+    "id": 11,
+    "firstName": "Zara",
+    "lastName": "Ali",
+    "grade": 10,
+    "studentNumber": "26371",
+    "homeroom": "10A"
+  },
+  {
+    "id": 12,
+    "firstName": "Liam",
+    "lastName": "Harper",
+    "grade": 9,
+    "studentNumber": "27219",
+    "homeroom": "9C"
+  },
+  {
+    "id": 13,
+    "firstName": "Sophie",
+    "lastName": "Tremblay",
+    "grade": 12,
+    "studentNumber": "24568",
+    "homeroom": "12A"
+  },
+  {
+    "id": 14,
+    "firstName": "Jacob",
+    "lastName": "Olsen",
+    "grade": 10,
+    "studentNumber": "26355",
+    "homeroom": "10D"
+  },
+  {
+    "id": 15,
+    "firstName": "Hannah",
+    "lastName": "Douglas",
+    "grade": 11,
+    "studentNumber": "25141",
+    "homeroom": "11D"
+  }
 ]
