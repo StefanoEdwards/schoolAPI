@@ -29,7 +29,7 @@ let students = loadJson("students.json");
 let tests = loadJson("tests.json");
 
 // ID generator function
-function getNextID(arr) {
+function getNextId(arr) {
   return arr.length ? Math.max(...arr.map(i => i.id)) + 1 : 1;
 }
 
@@ -53,8 +53,8 @@ API.get("/teachers/:id", (req, res) => {
 
 //Make new teacher
 API.post("/teachers", (req, res) => {
-  const { firstName, lastName, email, department } = req.body;
-  if (!firstName || !lastName || !email || !department) {
+  const { firstName, lastName, email, department, room } = req.body;
+  if (!firstName || !lastName || !email || !department || !room) {
     return res.status(400).json({ error: "Missing required fields" });
   }
 
@@ -64,6 +64,7 @@ API.post("/teachers", (req, res) => {
     lastName,
     email,
     department,
+    room,
   };
 
   teachers.push(newTeacher);
