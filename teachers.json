@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1,
+    "firstName": "Laura",
+    "lastName": "Chen",
+    "email": "lchen@bvg.ca",
+    "department": "Computer Science",
+    "room": "305"
+  },
+  {
+    "id": 2,
+    "firstName": "Michael",
+    "lastName": "Grant",
+    "email": "mgrant@bvg.ca",
+    "department": "Mathematics",
+    "room": "214"
+  },
+  {
+    "id": 3,
+    "firstName": "Sofia",
+    "lastName": "Martins",
+    "email": "smartins@bvg.ca",
+    "department": "Science",
+    "room": "Lab 2"
+  },
+  {
+    "id": 4,
+    "firstName": "David",
+    "lastName": "Holloway",
+    "email": "dholloway@bvg.ca",
+    "department": "English",
+    "room": "108"
+  },
+  {
+    "id": 5,
+    "firstName": "Priya",
+    "lastName": "Sharma",
+    "email": "psharma@bvg.ca",
+    "department": "Social Studies",
+    "room": "227"
+  },
+  {
+    "id": 6,
+    "firstName": "Benjamin",
+    "lastName": "Ross",
+    "email": "bross@bvg.ca",
+    "department": "Physical Education",
+    "room": "Gym Office"
+  }
+]
