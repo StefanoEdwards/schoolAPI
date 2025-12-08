@@ -52,7 +52,7 @@ API.get("/teachers/:id", (req, res) => {
 });
 
 //Make new teacher
-API.post("/teachers", (req, res) => {
+API.post("/teachers", (req, reFs) => {
   const { firstName, lastName, email, department, room } = req.body;
   if (!firstName || !lastName || !email || !department || !room) {
     return res.status(400).json({ error: "Missing required fields" });
