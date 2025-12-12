@@ -52,7 +52,7 @@ API.get("/teachers/:id", (req, res) => {
 });
 
 //Make new teacher
-API.post("/teachers", (req, reFs) => {
+API.post("/teachers", (req, res) => {
   const { firstName, lastName, email, department, room } = req.body;
   if (!firstName || !lastName || !email || !department || !room) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -293,6 +293,108 @@ API.delete("/tests/:id", (req, res) => {
   tests.splice(index, 1);
   saveJson("tests.json", tests);
   res.json({ message: "Test deleted" });
+});
+
+// Bonus endpoints 
+// List tests for student
+API.get("/students/:id/tests", (req, res) => {
+  const id = parseInt(req.params.id);
+  
+  const student = students.find(s => s.id === id);
+  if (!student) return res.status(404).json({ error: "Student not found" });
+  
+  const studentTests = tests.filter(t => t.studentId === id);
+  res.json(studentTests);
+});
+
+// List tests for course
+API.get("/courses/:id/tests", (req, res) => {
+  const id = parseInt(req.params.id);
+  
+  const course = courses.find(c => c.id === id);
+  if (!course) return res.status(404).json({ error: "Course not found" });
+  
+  const courseTests = tests.filter(t => t.courseId === id);
+  res.json(courseTests);
+});
+
+// Student average
+API.get("/students/:id/average", (req, res) => {
+  const id = parseInt(req.params.id);
+  
+  const student = students.find(s => s.id === id);
+  if (!student) return res.status(404).json({ error: "Student not found" });
+  
+  const studentTests = tests.filter(t => t.studentId === id);
+  
+  if (studentTests.length === 0) {
+    return res.json({
+      studentId: id,
+      testCount: 0,
+      averagePercent: 0
+    });
+  }
+  
+  const percentages = studentTests.map(t => (t.mark / t.outOf) * 100);
+  const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
+  
+  res.json({
+    studentId: id,
+    testCount: studentTests.length,
+    averagePercent: Math.round(average * 10) / 10
+  });
+});
+
+// Course average
+API.get("/courses/:id/average", (req, res) => {
+  const id = parseInt(req.params.id);
+  
+  const course = courses.find(c => c.id === id);
+  if (!course) return res.status(404).json({ error: "Course not found" });
+  
+  const courseTests = tests.filter(t => t.courseId === id);
+  
+  if (courseTests.length === 0) {
+    return res.json({
+      courseId: id,
+      testCount: 0,
+      averagePercent: 0
+    });
+  }
+  
+  const percentages = courseTests.map(t => (t.mark / t.outOf) * 100);
+  const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
+  
+  res.json({
+    courseId: id,
+    testCount: courseTests.length,
+    averagePercent: Math.round(average * 10) / 10
+  });
+});
+
+// Summarize teacher
+API.get("/teachers/:id/summary", (req, res) => {
+  const id = parseInt(req.params.id);
+  
+  const teacher = teachers.find(t => t.id === id);
+  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+  
+  const teacherCourses = courses.filter(c => c.teacherId === id);
+  
+  const coursesWithTestCount = teacherCourses.map(course => {
+    const testCount = tests.filter(t => t.courseId === course.id).length;
+    return {
+      courseId: course.id,
+      code: course.code,
+      testCount: testCount
+    };
+  });
+  
+  res.json({
+    teacherId: id,
+    teacherName: `${teacher.firstName} ${teacher.lastName}`,
+    courses: coursesWithTestCount
+  });
 });
 
 //Start server
