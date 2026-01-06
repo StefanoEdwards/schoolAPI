@@ -6,8 +6,14 @@ const API = express();
 API.use(express.json());
 
 // MongoDB setup
+console.log('Attempting MongoDB connection...');
+console.log('URI format check:', process.env.MONGODB_URI?.substring(0, 20));
+
 const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+const client = new MongoClient(uri, {
+  serverSelectionTimeoutMS: 5000,
+  tls: true
+});
 
 let db;
 let teachersCollection;
