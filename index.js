@@ -1,401 +1,509 @@
+require('dotenv').config();
 const express = require("express");
-const fs = require("fs");
-const path = require("path");
+const { MongoClient, ObjectId } = require("mongodb");
 
 const API = express();
 API.use(express.json());
 
-// Helper functions
-function loadJson(filePath) {
+// MongoDB setup
+const uri = process.env.MONGODB_URI;
+const client = new MongoClient(uri);
+
+let db;
+let teachersCollection;
+let coursesCollection;
+let studentsCollection;
+let testsCollection;
+
+// Connect to MongoDB
+async function connectDB() {
   try {
-    return JSON.parse(fs.readFileSync(path.join(__dirname, filePath), "utf8"));
+    await client.connect();
+    console.log("Connected to MongoDB Atlas");
+    
+    db = client.db("schoolDB");
+    teachersCollection = db.collection("teachers");
+    coursesCollection = db.collection("courses");
+    studentsCollection = db.collection("students");
+    testsCollection = db.collection("tests");
   } catch (err) {
-    return [];
+    console.error("MongoDB connection error:", err);
+    process.exit(1);
   }
 }
 
-function saveJson(filePath, data) {
-  fs.writeFileSync(
-    path.join(__dirname, filePath),
-    JSON.stringify(data, null, 2),
-    "utf8"
-  );
-}
-
-// Load data
-let teachers = loadJson("teachers.json");
-let courses = loadJson("courses.json");
-let students = loadJson("students.json");
-let tests = loadJson("tests.json");
-
-// ID generator function
-function getNextId(arr) {
-  return arr.length ? Math.max(...arr.map(i => i.id)) + 1 : 1;
-}
-
-let nextTeacherId = getNextId(teachers);
-let nextCourseId = getNextId(courses);
-let nextStudentId = getNextId(students);
-let nextTestId = getNextId(tests);
-
-//TEACHER
-//All teachers
-API.get("/teachers", (req, res) => {
-  res.json(teachers);
-});
-
-//One teacher by ID
-API.get("/teachers/:id", (req, res) => {
-  const teacher = teachers.find(t => t.id === parseInt(req.params.id));
-  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-  res.json(teacher);
-});
-
-//Make new teacher
-API.post("/teachers", (req, res) => {
-  const { firstName, lastName, email, department, room } = req.body;
-  if (!firstName || !lastName || !email || !department || !room) {
-    return res.status(400).json({ error: "Missing required fields" });
+// TEACHERS
+// Get all teachers
+API.get("/teachers", async (req, res) => {
+  try {
+    const teachers = await teachersCollection.find({}).toArray();
+    res.json(teachers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  const newTeacher = {
-    id: nextTeacherId++,
-    firstName,
-    lastName,
-    email,
-    department,
-    room,
-  };
-
-  teachers.push(newTeacher);
-  saveJson("teachers.json", teachers);
-  res.status(201).json(newTeacher);
 });
 
-//Update a teacher
-API.put("/teachers/:id", (req, res) => {
-  const teacher = teachers.find(t => t.id === parseInt(req.params.id));
-  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-
-  if (Object.keys(req.body).length === 0) {
-    return res.status(400).json({ error: "No fields to update" });
+// Get one teacher by ID
+API.get("/teachers/:id", async (req, res) => {
+  try {
+    const teacher = await teachersCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+    res.json(teacher);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  Object.assign(teacher, req.body);
-  saveJson("teachers.json", teachers);
-  res.json(teacher);
 });
 
-//Delete a teacher
-API.delete("/teachers/:id", (req, res) => {
-  const id = parseInt(req.params.id);
+// Create new teacher
+API.post("/teachers", async (req, res) => {
+  try {
+    const { firstName, lastName, email, department, room } = req.body;
+    
+    if (!firstName || !lastName || !email || !department || !room) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
 
-  const assigned = courses.some(c => c.teacherId === id);
-  if (assigned) return res.status(400).json({ error: "Teacher still teaches a course" });
-
-  const index = teachers.findIndex(t => t.id === id);
-  if (index === -1) return res.status(404).json({ error: "Teacher not found" });
-
-  teachers.splice(index, 1);
-  saveJson("teachers.json", teachers);
-  res.json({ message: "Teacher deleted" });
-});
-
-//COURSES
-//Get all courses
-API.get("/courses", (req, res) => {
-  res.json(courses);
-});
-
-//Get one course by ID
-API.get("/courses/:id", (req, res) => {
-  const course = courses.find(c => c.id === parseInt(req.params.id));
-  if (!course) return res.status(404).json({ error: "Course not found" });
-  res.json(course);
-});
-
-//Create a new course
-API.post("/courses", (req, res) => {
-  const { code, name, teacherId, semester, room } = req.body;
-
-  if (!code || !name || !teacherId || !semester || !room) {
-    return res.status(400).json({ error: "Missing required fields" });
+    const newTeacher = { firstName, lastName, email, department, room };
+    const result = await teachersCollection.insertOne(newTeacher);
+    
+    res.status(201).json({ _id: result.insertedId, ...newTeacher });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  if (!teachers.some(t => t.id === teacherId)) {
-    return res.status(400).json({ error: "Invalid teacherId" });
+// Update a teacher
+API.put("/teachers/:id", async (req, res) => {
+  try {
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "No fields to update" });
+    }
+
+    const result = await teachersCollection.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) return res.status(404).json({ error: "Teacher not found" });
+    res.json(result.value);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  const newCourse = {
-    id: nextCourseId++,
-    code,
-    name,
-    teacherId,
-    semester,
-    room,
-  };
-
-  courses.push(newCourse);
-  saveJson("courses.json", courses);
-  res.status(201).json(newCourse);
 });
 
-//Update a course
-API.put("/courses/:id", (req, res) => {
-  const course = courses.find(c => c.id === parseInt(req.params.id));
-  if (!course) return res.status(404).json({ error: "Course not found" });
+// Delete a teacher
+API.delete("/teachers/:id", async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    
+    const assigned = await coursesCollection.findOne({ teacherId });
+    if (assigned) {
+      return res.status(400).json({ error: "Teacher still teaches a course" });
+    }
 
-  if (req.body.teacherId && !teachers.some(t => t.id === req.body.teacherId)) {
-    return res.status(400).json({ error: "Invalid teacherId" });
+    const result = await teachersCollection.deleteOne({ _id: new ObjectId(teacherId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Teacher not found" });
+    }
+    
+    res.json({ message: "Teacher deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  Object.assign(course, req.body);
-  saveJson("courses.json", courses);
-  res.json(course);
 });
 
-//Delete a course
-API.delete("/courses/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const hasTests = tests.some(t => t.courseId === id);
-  if (hasTests) return res.status(400).json({ error: "Tests exist for this course" });
-
-  const index = courses.findIndex(c => c.id === id);
-  if (index === -1) return res.status(404).json({ error: "Course not found" });
-
-  courses.splice(index, 1);
-  saveJson("courses.json", courses);
-  res.json({ message: "Course deleted" });
-});
-
-//STUDENTS
-//Get all students
-API.get("/students", (req, res) => {
-  res.json(students);
-});
-
-//Get one student by ID
-API.get("/students/:id", (req, res) => {
-  const student = students.find(s => s.id === parseInt(req.params.id));
-  if (!student) return res.status(404).json({ error: "Student not found" });
-  res.json(student);
-});
-
-//Create a new student
-API.post("/students", (req, res) => {
-  const { firstName, lastName, grade, studentNumber } = req.body;
-
-  if (!firstName || !lastName || !grade || !studentNumber) {
-    return res.status(400).json({ error: "Missing required fields" });
+// COURSES
+// Get all courses
+API.get("/courses", async (req, res) => {
+  try {
+    const courses = await coursesCollection.find({}).toArray();
+    res.json(courses);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  const newStudent = {
-    id: nextStudentId++,
-    firstName,
-    lastName,
-    grade,
-    studentNumber,
-  };
-
-  students.push(newStudent);
-  saveJson("students.json", students);
-  res.status(201).json(newStudent);
 });
 
-//Update a student
-API.put("/students/:id", (req, res) => {
-  const student = students.find(s => s.id === parseInt(req.params.id));
-  if (!student) return res.status(404).json({ error: "Student not found" });
-
-  Object.assign(student, req.body);
-  saveJson("students.json", students);
-  res.json(student);
-});
-
-//Delete a student
-API.delete("/students/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-
-  const hasTests = tests.some(t => t.studentId === id);
-  if (hasTests) return res.status(400).json({ error: "Tests exist for this student" });
-
-  const index = students.findIndex(s => s.id === id);
-  if (index === -1) return res.status(404).json({ error: "Student not found" });
-
-  students.splice(index, 1);
-  saveJson("students.json", students);
-  res.json({ message: "Student deleted" });
-});
-
-//TESTS
-//Get all tests
-API.get("/tests", (req, res) => {
-  res.json(tests);
-});
-
-//Get one test by ID
-API.get("/tests/:id", (req, res) => {
-  const test = tests.find(t => t.id === parseInt(req.params.id));
-  if (!test) return res.status(404).json({ error: "Test not found" });
-  res.json(test);
-});
-
-//Create a new test
-API.post("/tests", (req, res) => {
-  const { studentId, courseId, testName, date, mark, outOf } = req.body;
-
-  if (!studentId || !courseId || !testName || !date || mark == null || outOf == null) {
-    return res.status(400).json({ error: "Missing required fields" });
+// Get one course by ID
+API.get("/courses/:id", async (req, res) => {
+  try {
+    const course = await coursesCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!course) return res.status(404).json({ error: "Course not found" });
+    res.json(course);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  if (!students.some(s => s.id === studentId)) return res.status(400).json({ error: "Invalid studentId" });
-  if (!courses.some(c => c.id === courseId)) return res.status(400).json({ error: "Invalid courseId" });
-
-  const newTest = {
-    id: nextTestId++,
-    studentId,
-    courseId,
-    testName,
-    date,
-    mark,
-    outOf,
-  };
-
-  tests.push(newTest);
-  saveJson("tests.json", tests);
-  res.status(201).json(newTest);
 });
 
-//Update a test
-API.put("/tests/:id", (req, res) => {
-  const test = tests.find(t => t.id === parseInt(req.params.id));
-  if (!test) return res.status(404).json({ error: "Test not found" });
+// Create a new course
+API.post("/courses", async (req, res) => {
+  try {
+    const { code, name, teacherId, semester, room } = req.body;
 
-  if (req.body.studentId && !students.some(s => s.id === req.body.studentId)) {
-    return res.status(400).json({ error: "Invalid studentId" });
+    if (!code || !name || !teacherId || !semester || !room) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const teacher = await teachersCollection.findOne({ _id: new ObjectId(teacherId) });
+    if (!teacher) {
+      return res.status(400).json({ error: "Invalid teacherId" });
+    }
+
+    const newCourse = { code, name, teacherId, semester, room };
+    const result = await coursesCollection.insertOne(newCourse);
+    
+    res.status(201).json({ _id: result.insertedId, ...newCourse });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
+});
 
-  if (req.body.courseId && !courses.some(c => c.id === req.body.courseId)) {
-    return res.status(400).json({ error: "Invalid courseId" });
+// Update a course
+API.put("/courses/:id", async (req, res) => {
+  try {
+    if (req.body.teacherId) {
+      const teacher = await teachersCollection.findOne({ _id: new ObjectId(req.body.teacherId) });
+      if (!teacher) {
+        return res.status(400).json({ error: "Invalid teacherId" });
+      }
+    }
+
+    const result = await coursesCollection.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) return res.status(404).json({ error: "Course not found" });
+    res.json(result.value);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  Object.assign(test, req.body);
-  saveJson("tests.json", tests);
-  res.json(test);
 });
 
-//Delete a test
-API.delete("/tests/:id", (req, res) => {
-  const index = tests.findIndex(t => t.id === parseInt(req.params.id));
-  if (index === -1) return res.status(404).json({ error: "Test not found" });
+// Delete a course
+API.delete("/courses/:id", async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    
+    const hasTests = await testsCollection.findOne({ courseId });
+    if (hasTests) {
+      return res.status(400).json({ error: "Tests exist for this course" });
+    }
 
-  tests.splice(index, 1);
-  saveJson("tests.json", tests);
-  res.json({ message: "Test deleted" });
+    const result = await coursesCollection.deleteOne({ _id: new ObjectId(courseId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Course not found" });
+    }
+    
+    res.json({ message: "Course deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// Bonus endpoints 
+// STUDENTS
+// Get all students
+API.get("/students", async (req, res) => {
+  try {
+    const students = await studentsCollection.find({}).toArray();
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get one student by ID
+API.get("/students/:id", async (req, res) => {
+  try {
+    const student = await studentsCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    res.json(student);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new student
+API.post("/students", async (req, res) => {
+  try {
+    const { firstName, lastName, grade, studentNumber } = req.body;
+
+    if (!firstName || !lastName || !grade || !studentNumber) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const newStudent = { firstName, lastName, grade, studentNumber };
+    const result = await studentsCollection.insertOne(newStudent);
+    
+    res.status(201).json({ _id: result.insertedId, ...newStudent });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a student
+API.put("/students/:id", async (req, res) => {
+  try {
+    const result = await studentsCollection.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) return res.status(404).json({ error: "Student not found" });
+    res.json(result.value);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a student
+API.delete("/students/:id", async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    
+    const hasTests = await testsCollection.findOne({ studentId });
+    if (hasTests) {
+      return res.status(400).json({ error: "Tests exist for this student" });
+    }
+
+    const result = await studentsCollection.deleteOne({ _id: new ObjectId(studentId) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Student not found" });
+    }
+    
+    res.json({ message: "Student deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TESTS
+// Get all tests
+API.get("/tests", async (req, res) => {
+  try {
+    const tests = await testsCollection.find({}).toArray();
+    res.json(tests);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get one test by ID
+API.get("/tests/:id", async (req, res) => {
+  try {
+    const test = await testsCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!test) return res.status(404).json({ error: "Test not found" });
+    res.json(test);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create a new test
+API.post("/tests", async (req, res) => {
+  try {
+    const { studentId, courseId, testName, date, mark, outOf } = req.body;
+
+    if (!studentId || !courseId || !testName || !date || mark == null || outOf == null) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const student = await studentsCollection.findOne({ _id: new ObjectId(studentId) });
+    if (!student) return res.status(400).json({ error: "Invalid studentId" });
+
+    const course = await coursesCollection.findOne({ _id: new ObjectId(courseId) });
+    if (!course) return res.status(400).json({ error: "Invalid courseId" });
+
+    const newTest = { studentId, courseId, testName, date, mark, outOf };
+    const result = await testsCollection.insertOne(newTest);
+    
+    res.status(201).json({ _id: result.insertedId, ...newTest });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update a test
+API.put("/tests/:id", async (req, res) => {
+  try {
+    if (req.body.studentId) {
+      const student = await studentsCollection.findOne({ _id: new ObjectId(req.body.studentId) });
+      if (!student) {
+        return res.status(400).json({ error: "Invalid studentId" });
+      }
+    }
+
+    if (req.body.courseId) {
+      const course = await coursesCollection.findOne({ _id: new ObjectId(req.body.courseId) });
+      if (!course) {
+        return res.status(400).json({ error: "Invalid courseId" });
+      }
+    }
+
+    const result = await testsCollection.findOneAndUpdate(
+      { _id: new ObjectId(req.params.id) },
+      { $set: req.body },
+      { returnDocument: 'after' }
+    );
+
+    if (!result.value) return res.status(404).json({ error: "Test not found" });
+    res.json(result.value);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete a test
+API.delete("/tests/:id", async (req, res) => {
+  try {
+    const result = await testsCollection.deleteOne({ _id: new ObjectId(req.params.id) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "Test not found" });
+    }
+    
+    res.json({ message: "Test deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// BONUS ENDPOINTS
 // List tests for student
-API.get("/students/:id/tests", (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const student = students.find(s => s.id === id);
-  if (!student) return res.status(404).json({ error: "Student not found" });
-  
-  const studentTests = tests.filter(t => t.studentId === id);
-  res.json(studentTests);
+API.get("/students/:id/tests", async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    
+    const student = await studentsCollection.findOne({ _id: new ObjectId(studentId) });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    
+    const studentTests = await testsCollection.find({ studentId }).toArray();
+    res.json(studentTests);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // List tests for course
-API.get("/courses/:id/tests", (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const course = courses.find(c => c.id === id);
-  if (!course) return res.status(404).json({ error: "Course not found" });
-  
-  const courseTests = tests.filter(t => t.courseId === id);
-  res.json(courseTests);
+API.get("/courses/:id/tests", async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    
+    const course = await coursesCollection.findOne({ _id: new ObjectId(courseId) });
+    if (!course) return res.status(404).json({ error: "Course not found" });
+    
+    const courseTests = await testsCollection.find({ courseId }).toArray();
+    res.json(courseTests);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Student average
-API.get("/students/:id/average", (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const student = students.find(s => s.id === id);
-  if (!student) return res.status(404).json({ error: "Student not found" });
-  
-  const studentTests = tests.filter(t => t.studentId === id);
-  
-  if (studentTests.length === 0) {
-    return res.json({
-      studentId: id,
-      testCount: 0,
-      averagePercent: 0
+API.get("/students/:id/average", async (req, res) => {
+  try {
+    const studentId = req.params.id;
+    
+    const student = await studentsCollection.findOne({ _id: new ObjectId(studentId) });
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    
+    const studentTests = await testsCollection.find({ studentId }).toArray();
+    
+    if (studentTests.length === 0) {
+      return res.json({
+        studentId,
+        testCount: 0,
+        averagePercent: 0
+      });
+    }
+    
+    const percentages = studentTests.map(t => (t.mark / t.outOf) * 100);
+    const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
+    
+    res.json({
+      studentId,
+      testCount: studentTests.length,
+      averagePercent: Math.round(average * 10) / 10
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  
-  const percentages = studentTests.map(t => (t.mark / t.outOf) * 100);
-  const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
-  
-  res.json({
-    studentId: id,
-    testCount: studentTests.length,
-    averagePercent: Math.round(average * 10) / 10
-  });
 });
 
 // Course average
-API.get("/courses/:id/average", (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const course = courses.find(c => c.id === id);
-  if (!course) return res.status(404).json({ error: "Course not found" });
-  
-  const courseTests = tests.filter(t => t.courseId === id);
-  
-  if (courseTests.length === 0) {
-    return res.json({
-      courseId: id,
-      testCount: 0,
-      averagePercent: 0
+API.get("/courses/:id/average", async (req, res) => {
+  try {
+    const courseId = req.params.id;
+    
+    const course = await coursesCollection.findOne({ _id: new ObjectId(courseId) });
+    if (!course) return res.status(404).json({ error: "Course not found" });
+    
+    const courseTests = await testsCollection.find({ courseId }).toArray();
+    
+    if (courseTests.length === 0) {
+      return res.json({
+        courseId,
+        testCount: 0,
+        averagePercent: 0
+      });
+    }
+    
+    const percentages = courseTests.map(t => (t.mark / t.outOf) * 100);
+    const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
+    
+    res.json({
+      courseId,
+      testCount: courseTests.length,
+      averagePercent: Math.round(average * 10) / 10
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  
-  const percentages = courseTests.map(t => (t.mark / t.outOf) * 100);
-  const average = percentages.reduce((sum, p) => sum + p, 0) / percentages.length;
-  
-  res.json({
-    courseId: id,
-    testCount: courseTests.length,
-    averagePercent: Math.round(average * 10) / 10
-  });
 });
 
 // Summarize teacher
-API.get("/teachers/:id/summary", (req, res) => {
-  const id = parseInt(req.params.id);
-  
-  const teacher = teachers.find(t => t.id === id);
-  if (!teacher) return res.status(404).json({ error: "Teacher not found" });
-  
-  const teacherCourses = courses.filter(c => c.teacherId === id);
-  
-  const coursesWithTestCount = teacherCourses.map(course => {
-    const testCount = tests.filter(t => t.courseId === course.id).length;
-    return {
-      courseId: course.id,
-      code: course.code,
-      testCount: testCount
-    };
-  });
-  
-  res.json({
-    teacherId: id,
-    teacherName: `${teacher.firstName} ${teacher.lastName}`,
-    courses: coursesWithTestCount
-  });
+API.get("/teachers/:id/summary", async (req, res) => {
+  try {
+    const teacherId = req.params.id;
+    
+    const teacher = await teachersCollection.findOne({ _id: new ObjectId(teacherId) });
+    if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+    
+    const teacherCourses = await coursesCollection.find({ teacherId }).toArray();
+    
+    const coursesWithTestCount = await Promise.all(
+      teacherCourses.map(async (course) => {
+        const testCount = await testsCollection.countDocuments({ courseId: course._id.toString() });
+        return {
+          courseId: course._id,
+          code: course.code,
+          testCount
+        };
+      })
+    );
+    
+    res.json({
+      teacherId,
+      teacherName: `${teacher.firstName} ${teacher.lastName}`,
+      courses: coursesWithTestCount
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
-//Start server
-API.listen(3000, () => console.log("Server running on port 3000"));
+// Start server
+async function startServer() {
+  await connectDB();
+  const PORT = process.env.PORT || 3000;
+  API.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer();
