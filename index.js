@@ -1,15 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
-const { MongoClient } = require('mongodb');
+const { connectToDatabase, getDb } = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// MongoDB connection
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
-let db;
 
 // Middleware
 app.use(cors());
@@ -38,6 +33,7 @@ app.get('/', (req, res) => {
 // GET all teachers
 app.get('/teachers', async (req, res) => {
   try {
+    const db = getDb();
     const teachers = await db.collection('teachers').find({}).toArray();
     res.json(teachers);
   } catch (error) {
@@ -48,6 +44,7 @@ app.get('/teachers', async (req, res) => {
 // GET single teacher by id
 app.get('/teachers/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const teacher = await db.collection('teachers').findOne({ id });
     if (!teacher) {
@@ -62,6 +59,7 @@ app.get('/teachers/:id', async (req, res) => {
 // POST create new teacher
 app.post('/teachers', async (req, res) => {
   try {
+    const db = getDb();
     const { firstName, lastName, email, department, room } = req.body;
     
     if (!firstName || !lastName || !email || !department) {
@@ -93,6 +91,7 @@ app.post('/teachers', async (req, res) => {
 // PUT update teacher
 app.put('/teachers/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const { firstName, lastName, email, department, room } = req.body;
     
@@ -123,6 +122,7 @@ app.put('/teachers/:id', async (req, res) => {
 // DELETE teacher
 app.delete('/teachers/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     
     const teacher = await db.collection('teachers').findOne({ id });
@@ -149,6 +149,7 @@ app.delete('/teachers/:id', async (req, res) => {
 // GET all courses
 app.get('/courses', async (req, res) => {
   try {
+    const db = getDb();
     const courses = await db.collection('courses').find({}).toArray();
     res.json(courses);
   } catch (error) {
@@ -159,6 +160,7 @@ app.get('/courses', async (req, res) => {
 // GET single course by id
 app.get('/courses/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const course = await db.collection('courses').findOne({ id });
     if (!course) {
@@ -173,6 +175,7 @@ app.get('/courses/:id', async (req, res) => {
 // GET all tests for a course
 app.get('/courses/:id/tests', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const course = await db.collection('courses').findOne({ id });
     if (!course) {
@@ -188,6 +191,7 @@ app.get('/courses/:id/tests', async (req, res) => {
 // GET class average for a course
 app.get('/courses/:id/average', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const course = await db.collection('courses').findOne({ id });
     if (!course) {
@@ -223,6 +227,7 @@ app.get('/courses/:id/average', async (req, res) => {
 // POST create new course
 app.post('/courses', async (req, res) => {
   try {
+    const db = getDb();
     const { code, name, teacherId, semester, room, schedule } = req.body;
     
     if (!code || !name || !teacherId || !semester || !room) {
@@ -260,6 +265,7 @@ app.post('/courses', async (req, res) => {
 // PUT update course
 app.put('/courses/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const { code, name, teacherId, semester, room, schedule } = req.body;
     
@@ -298,6 +304,7 @@ app.put('/courses/:id', async (req, res) => {
 // DELETE course
 app.delete('/courses/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     
     const course = await db.collection('courses').findOne({ id });
@@ -324,6 +331,7 @@ app.delete('/courses/:id', async (req, res) => {
 // GET all students
 app.get('/students', async (req, res) => {
   try {
+    const db = getDb();
     const students = await db.collection('students').find({}).toArray();
     res.json(students);
   } catch (error) {
@@ -334,6 +342,7 @@ app.get('/students', async (req, res) => {
 // GET single student by id
 app.get('/students/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const student = await db.collection('students').findOne({ id });
     if (!student) {
@@ -348,6 +357,7 @@ app.get('/students/:id', async (req, res) => {
 // GET all tests for a student
 app.get('/students/:id/tests', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const student = await db.collection('students').findOne({ id });
     if (!student) {
@@ -363,6 +373,7 @@ app.get('/students/:id/tests', async (req, res) => {
 // GET student average
 app.get('/students/:id/average', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const student = await db.collection('students').findOne({ id });
     if (!student) {
@@ -398,6 +409,7 @@ app.get('/students/:id/average', async (req, res) => {
 // POST create new student
 app.post('/students', async (req, res) => {
   try {
+    const db = getDb();
     const { firstName, lastName, grade, studentNumber, homeroom } = req.body;
     
     if (!firstName || !lastName || !grade || !studentNumber) {
@@ -429,6 +441,7 @@ app.post('/students', async (req, res) => {
 // PUT update student
 app.put('/students/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const { firstName, lastName, grade, studentNumber, homeroom } = req.body;
     
@@ -459,6 +472,7 @@ app.put('/students/:id', async (req, res) => {
 // DELETE student
 app.delete('/students/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     
     const student = await db.collection('students').findOne({ id });
@@ -485,6 +499,7 @@ app.delete('/students/:id', async (req, res) => {
 // GET all tests
 app.get('/tests', async (req, res) => {
   try {
+    const db = getDb();
     const tests = await db.collection('tests').find({}).toArray();
     res.json(tests);
   } catch (error) {
@@ -495,6 +510,7 @@ app.get('/tests', async (req, res) => {
 // GET single test by id
 app.get('/tests/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const test = await db.collection('tests').findOne({ id });
     if (!test) {
@@ -509,6 +525,7 @@ app.get('/tests/:id', async (req, res) => {
 // POST create new test
 app.post('/tests', async (req, res) => {
   try {
+    const db = getDb();
     const { studentId, courseId, testName, date, mark, outOf, weight } = req.body;
     
     if (!studentId || !courseId || !testName || !date || mark === undefined || !outOf) {
@@ -552,6 +569,7 @@ app.post('/tests', async (req, res) => {
 // PUT update test
 app.put('/tests/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     const { studentId, courseId, testName, date, mark, outOf, weight } = req.body;
     
@@ -598,6 +616,7 @@ app.put('/tests/:id', async (req, res) => {
 // DELETE test
 app.delete('/tests/:id', async (req, res) => {
   try {
+    const db = getDb();
     const id = parseInt(req.params.id);
     
     const test = await db.collection('tests').findOne({ id });
@@ -627,9 +646,7 @@ app.use((err, req, res, next) => {
 
 async function startServer() {
   try {
-    await client.connect();
-    console.log('✅ Connected to MongoDB Atlas');
-    db = client.db('schooldb');
+    await connectToDatabase();
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
