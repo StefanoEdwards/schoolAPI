@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const { ObjectId } = require('mongodb');
 require('dotenv').config();
 const { connectToDatabase, getDb } = require('./db');
 
@@ -41,12 +42,12 @@ app.get('/teachers', async (req, res) => {
   }
 });
 
-// GET single teacher by id
+// GET single teacher by _id
 app.get('/teachers/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const teacher = await db.collection('teachers').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const teacher = await db.collection('teachers').findOne({ _id });
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
@@ -68,12 +69,7 @@ app.post('/teachers', async (req, res) => {
       });
     }
     
-    const lastTeacher = await db.collection('teachers')
-      .find({}).sort({ id: -1 }).limit(1).toArray();
-    const nextId = lastTeacher.length > 0 ? lastTeacher[0].id + 1 : 1;
-    
     const newTeacher = {
-      id: nextId,
       firstName,
       lastName,
       email,
@@ -81,8 +77,9 @@ app.post('/teachers', async (req, res) => {
       room: room || ''
     };
     
-    await db.collection('teachers').insertOne(newTeacher);
-    res.status(201).json(newTeacher);
+    const result = await db.collection('teachers').insertOne(newTeacher);
+    const createdTeacher = await db.collection('teachers').findOne({ _id: result.insertedId });
+    res.status(201).json(createdTeacher);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create teacher', details: error.message });
   }
@@ -92,10 +89,10 @@ app.post('/teachers', async (req, res) => {
 app.put('/teachers/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     const { firstName, lastName, email, department, room } = req.body;
     
-    const existingTeacher = await db.collection('teachers').findOne({ id });
+    const existingTeacher = await db.collection('teachers').findOne({ _id });
     if (!existingTeacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
@@ -111,8 +108,8 @@ app.put('/teachers/:id', async (req, res) => {
     if (department) updateFields.department = department;
     if (room !== undefined) updateFields.room = room;
     
-    await db.collection('teachers').updateOne({ id }, { $set: updateFields });
-    const updatedTeacher = await db.collection('teachers').findOne({ id });
+    await db.collection('teachers').updateOne({ _id }, { $set: updateFields });
+    const updatedTeacher = await db.collection('teachers').findOne({ _id });
     res.json(updatedTeacher);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update teacher', details: error.message });
@@ -120,24 +117,24 @@ app.put('/teachers/:id', async (req, res) => {
 });
 
 // DELETE teacher
-app.delete('/teachers/:_id', async (req, res) => {
+app.delete('/teachers/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = req.params.id;
+    const _id = new ObjectId(req.params.id);
     
-    const teacher = await db.collection('teachers').findOne({ id });
+    const teacher = await db.collection('teachers').findOne({ _id });
     if (!teacher) {
       return res.status(404).json({ error: 'Teacher not found' });
     }
     
-    const coursesWithTeacher = await db.collection('courses').findOne({ teacherId: id });
+    const coursesWithTeacher = await db.collection('courses').findOne({ teacherId: _id });
     if (coursesWithTeacher) {
       return res.status(400).json({ 
         error: 'Cannot delete teacher. Teacher is assigned to one or more courses.' 
       });
     }
     
-    await db.collection('teachers').deleteOne({ id });
+    await db.collection('teachers').deleteOne({ _id });
     res.json({ message: 'Teacher deleted successfully', teacher });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete teacher', details: error.message });
@@ -157,12 +154,12 @@ app.get('/courses', async (req, res) => {
   }
 });
 
-// GET single course by id
+// GET single course by _id
 app.get('/courses/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const course = await db.collection('courses').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const course = await db.collection('courses').findOne({ _id });
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
@@ -176,12 +173,12 @@ app.get('/courses/:id', async (req, res) => {
 app.get('/courses/:id/tests', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const course = await db.collection('courses').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const course = await db.collection('courses').findOne({ _id });
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
-    const tests = await db.collection('tests').find({ courseId: id }).toArray();
+    const tests = await db.collection('tests').find({ courseId: _id }).toArray();
     res.json(tests);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tests', details: error.message });
@@ -192,16 +189,16 @@ app.get('/courses/:id/tests', async (req, res) => {
 app.get('/courses/:id/average', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const course = await db.collection('courses').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const course = await db.collection('courses').findOne({ _id });
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
     
-    const tests = await db.collection('tests').find({ courseId: id }).toArray();
+    const tests = await db.collection('tests').find({ courseId: _id }).toArray();
     if (tests.length === 0) {
       return res.json({ 
-        courseId: id, 
+        courseId: _id, 
         courseName: course.name,
         average: null,
         message: 'No tests found for this course' 
@@ -214,7 +211,7 @@ app.get('/courses/:id/average', async (req, res) => {
     const average = totalPercentage / tests.length;
     
     res.json({ 
-      courseId: id,
+      courseId: _id,
       courseName: course.name,
       average: parseFloat(average.toFixed(2)),
       testCount: tests.length
@@ -236,27 +233,24 @@ app.post('/courses', async (req, res) => {
       });
     }
     
-    const teacher = await db.collection('teachers').findOne({ id: teacherId });
+    const teacherObjectId = new ObjectId(teacherId);
+    const teacher = await db.collection('teachers').findOne({ _id: teacherObjectId });
     if (!teacher) {
       return res.status(400).json({ error: 'Invalid teacherId. Teacher does not exist.' });
     }
     
-    const lastCourse = await db.collection('courses')
-      .find({}).sort({ id: -1 }).limit(1).toArray();
-    const nextId = lastCourse.length > 0 ? lastCourse[0].id + 1 : 1;
-    
     const newCourse = {
-      id: nextId,
       code,
       name,
-      teacherId,
+      teacherId: teacherObjectId,
       semester,
       room,
       schedule: schedule || ''
     };
     
-    await db.collection('courses').insertOne(newCourse);
-    res.status(201).json(newCourse);
+    const result = await db.collection('courses').insertOne(newCourse);
+    const createdCourse = await db.collection('courses').findOne({ _id: result.insertedId });
+    res.status(201).json(createdCourse);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create course', details: error.message });
   }
@@ -266,10 +260,10 @@ app.post('/courses', async (req, res) => {
 app.put('/courses/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     const { code, name, teacherId, semester, room, schedule } = req.body;
     
-    const existingCourse = await db.collection('courses').findOne({ id });
+    const existingCourse = await db.collection('courses').findOne({ _id });
     if (!existingCourse) {
       return res.status(404).json({ error: 'Course not found' });
     }
@@ -278,23 +272,24 @@ app.put('/courses/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields provided to update' });
     }
     
-    if (teacherId) {
-      const teacher = await db.collection('teachers').findOne({ id: teacherId });
-      if (!teacher) {
-        return res.status(400).json({ error: 'Invalid teacherId. Teacher does not exist.' });
-      }
-    }
-    
     const updateFields = {};
     if (code) updateFields.code = code;
     if (name) updateFields.name = name;
-    if (teacherId) updateFields.teacherId = teacherId;
     if (semester) updateFields.semester = semester;
     if (room) updateFields.room = room;
     if (schedule !== undefined) updateFields.schedule = schedule;
     
-    await db.collection('courses').updateOne({ id }, { $set: updateFields });
-    const updatedCourse = await db.collection('courses').findOne({ id });
+    if (teacherId) {
+      const teacherObjectId = new ObjectId(teacherId);
+      const teacher = await db.collection('teachers').findOne({ _id: teacherObjectId });
+      if (!teacher) {
+        return res.status(400).json({ error: 'Invalid teacherId. Teacher does not exist.' });
+      }
+      updateFields.teacherId = teacherObjectId;
+    }
+    
+    await db.collection('courses').updateOne({ _id }, { $set: updateFields });
+    const updatedCourse = await db.collection('courses').findOne({ _id });
     res.json(updatedCourse);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update course', details: error.message });
@@ -305,21 +300,21 @@ app.put('/courses/:id', async (req, res) => {
 app.delete('/courses/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     
-    const course = await db.collection('courses').findOne({ id });
+    const course = await db.collection('courses').findOne({ _id });
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
     
-    const testsForCourse = await db.collection('tests').findOne({ courseId: id });
+    const testsForCourse = await db.collection('tests').findOne({ courseId: _id });
     if (testsForCourse) {
       return res.status(400).json({ 
         error: 'Cannot delete course. Tests exist for this course.' 
       });
     }
     
-    await db.collection('courses').deleteOne({ id });
+    await db.collection('courses').deleteOne({ _id });
     res.json({ message: 'Course deleted successfully', course });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete course', details: error.message });
@@ -339,12 +334,12 @@ app.get('/students', async (req, res) => {
   }
 });
 
-// GET single student by id
+// GET single student by _id
 app.get('/students/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const student = await db.collection('students').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const student = await db.collection('students').findOne({ _id });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -358,12 +353,12 @@ app.get('/students/:id', async (req, res) => {
 app.get('/students/:id/tests', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const student = await db.collection('students').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const student = await db.collection('students').findOne({ _id });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
-    const tests = await db.collection('tests').find({ studentId: id }).toArray();
+    const tests = await db.collection('tests').find({ studentId: _id }).toArray();
     res.json(tests);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch tests', details: error.message });
@@ -374,16 +369,16 @@ app.get('/students/:id/tests', async (req, res) => {
 app.get('/students/:id/average', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const student = await db.collection('students').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const student = await db.collection('students').findOne({ _id });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
     
-    const tests = await db.collection('tests').find({ studentId: id }).toArray();
+    const tests = await db.collection('tests').find({ studentId: _id }).toArray();
     if (tests.length === 0) {
       return res.json({ 
-        studentId: id, 
+        studentId: _id, 
         studentName: `${student.firstName} ${student.lastName}`,
         average: null,
         message: 'No tests found for this student' 
@@ -396,7 +391,7 @@ app.get('/students/:id/average', async (req, res) => {
     const average = totalPercentage / tests.length;
     
     res.json({ 
-      studentId: id,
+      studentId: _id,
       studentName: `${student.firstName} ${student.lastName}`,
       average: parseFloat(average.toFixed(2)),
       testCount: tests.length
@@ -418,12 +413,7 @@ app.post('/students', async (req, res) => {
       });
     }
     
-    const lastStudent = await db.collection('students')
-      .find({}).sort({ id: -1 }).limit(1).toArray();
-    const nextId = lastStudent.length > 0 ? lastStudent[0].id + 1 : 1;
-    
     const newStudent = {
-      id: nextId,
       firstName,
       lastName,
       grade,
@@ -431,8 +421,9 @@ app.post('/students', async (req, res) => {
       homeroom: homeroom || ''
     };
     
-    await db.collection('students').insertOne(newStudent);
-    res.status(201).json(newStudent);
+    const result = await db.collection('students').insertOne(newStudent);
+    const createdStudent = await db.collection('students').findOne({ _id: result.insertedId });
+    res.status(201).json(createdStudent);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create student', details: error.message });
   }
@@ -442,10 +433,10 @@ app.post('/students', async (req, res) => {
 app.put('/students/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     const { firstName, lastName, grade, studentNumber, homeroom } = req.body;
     
-    const existingStudent = await db.collection('students').findOne({ id });
+    const existingStudent = await db.collection('students').findOne({ _id });
     if (!existingStudent) {
       return res.status(404).json({ error: 'Student not found' });
     }
@@ -461,8 +452,8 @@ app.put('/students/:id', async (req, res) => {
     if (studentNumber) updateFields.studentNumber = studentNumber;
     if (homeroom !== undefined) updateFields.homeroom = homeroom;
     
-    await db.collection('students').updateOne({ id }, { $set: updateFields });
-    const updatedStudent = await db.collection('students').findOne({ id });
+    await db.collection('students').updateOne({ _id }, { $set: updateFields });
+    const updatedStudent = await db.collection('students').findOne({ _id });
     res.json(updatedStudent);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update student', details: error.message });
@@ -473,21 +464,21 @@ app.put('/students/:id', async (req, res) => {
 app.delete('/students/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     
-    const student = await db.collection('students').findOne({ id });
+    const student = await db.collection('students').findOne({ _id });
     if (!student) {
       return res.status(404).json({ error: 'Student not found' });
     }
     
-    const testsForStudent = await db.collection('tests').findOne({ studentId: id });
+    const testsForStudent = await db.collection('tests').findOne({ studentId: _id });
     if (testsForStudent) {
       return res.status(400).json({ 
         error: 'Cannot delete student. Test records exist for this student.' 
       });
     }
     
-    await db.collection('students').deleteOne({ id });
+    await db.collection('students').deleteOne({ _id });
     res.json({ message: 'Student deleted successfully', student });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete student', details: error.message });
@@ -507,12 +498,12 @@ app.get('/tests', async (req, res) => {
   }
 });
 
-// GET single test by id
+// GET single test by _id
 app.get('/tests/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
-    const test = await db.collection('tests').findOne({ id });
+    const _id = new ObjectId(req.params.id);
+    const test = await db.collection('tests').findOne({ _id });
     if (!test) {
       return res.status(404).json({ error: 'Test not found' });
     }
@@ -534,24 +525,21 @@ app.post('/tests', async (req, res) => {
       });
     }
     
-    const student = await db.collection('students').findOne({ id: studentId });
+    const studentObjectId = new ObjectId(studentId);
+    const student = await db.collection('students').findOne({ _id: studentObjectId });
     if (!student) {
       return res.status(400).json({ error: 'Invalid studentId. Student does not exist.' });
     }
     
-    const course = await db.collection('courses').findOne({ id: courseId });
+    const courseObjectId = new ObjectId(courseId);
+    const course = await db.collection('courses').findOne({ _id: courseObjectId });
     if (!course) {
       return res.status(400).json({ error: 'Invalid courseId. Course does not exist.' });
     }
     
-    const lastTest = await db.collection('tests')
-      .find({}).sort({ id: -1 }).limit(1).toArray();
-    const nextId = lastTest.length > 0 ? lastTest[0].id + 1 : 1;
-    
     const newTest = {
-      id: nextId,
-      studentId,
-      courseId,
+      studentId: studentObjectId,
+      courseId: courseObjectId,
       testName,
       date,
       mark,
@@ -559,8 +547,9 @@ app.post('/tests', async (req, res) => {
       weight: weight || 0
     };
     
-    await db.collection('tests').insertOne(newTest);
-    res.status(201).json(newTest);
+    const result = await db.collection('tests').insertOne(newTest);
+    const createdTest = await db.collection('tests').findOne({ _id: result.insertedId });
+    res.status(201).json(createdTest);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create test', details: error.message });
   }
@@ -570,10 +559,10 @@ app.post('/tests', async (req, res) => {
 app.put('/tests/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     const { studentId, courseId, testName, date, mark, outOf, weight } = req.body;
     
-    const existingTest = await db.collection('tests').findOne({ id });
+    const existingTest = await db.collection('tests').findOne({ _id });
     if (!existingTest) {
       return res.status(404).json({ error: 'Test not found' });
     }
@@ -582,31 +571,33 @@ app.put('/tests/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields provided to update' });
     }
     
-    if (studentId) {
-      const student = await db.collection('students').findOne({ id: studentId });
-      if (!student) {
-        return res.status(400).json({ error: 'Invalid studentId. Student does not exist.' });
-      }
-    }
-    
-    if (courseId) {
-      const course = await db.collection('courses').findOne({ id: courseId });
-      if (!course) {
-        return res.status(400).json({ error: 'Invalid courseId. Course does not exist.' });
-      }
-    }
-    
     const updateFields = {};
-    if (studentId) updateFields.studentId = studentId;
-    if (courseId) updateFields.courseId = courseId;
     if (testName) updateFields.testName = testName;
     if (date) updateFields.date = date;
     if (mark !== undefined) updateFields.mark = mark;
     if (outOf) updateFields.outOf = outOf;
     if (weight !== undefined) updateFields.weight = weight;
     
-    await db.collection('tests').updateOne({ id }, { $set: updateFields });
-    const updatedTest = await db.collection('tests').findOne({ id });
+    if (studentId) {
+      const studentObjectId = new ObjectId(studentId);
+      const student = await db.collection('students').findOne({ _id: studentObjectId });
+      if (!student) {
+        return res.status(400).json({ error: 'Invalid studentId. Student does not exist.' });
+      }
+      updateFields.studentId = studentObjectId;
+    }
+    
+    if (courseId) {
+      const courseObjectId = new ObjectId(courseId);
+      const course = await db.collection('courses').findOne({ _id: courseObjectId });
+      if (!course) {
+        return res.status(400).json({ error: 'Invalid courseId. Course does not exist.' });
+      }
+      updateFields.courseId = courseObjectId;
+    }
+    
+    await db.collection('tests').updateOne({ _id }, { $set: updateFields });
+    const updatedTest = await db.collection('tests').findOne({ _id });
     res.json(updatedTest);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update test', details: error.message });
@@ -617,14 +608,14 @@ app.put('/tests/:id', async (req, res) => {
 app.delete('/tests/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const _id = new ObjectId(req.params.id);
     
-    const test = await db.collection('tests').findOne({ id });
+    const test = await db.collection('tests').findOne({ _id });
     if (!test) {
       return res.status(404).json({ error: 'Test not found' });
     }
     
-    await db.collection('tests').deleteOne({ id });
+    await db.collection('tests').deleteOne({ _id });
     res.json({ message: 'Test deleted successfully', test });
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete test', details: error.message });
