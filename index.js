@@ -120,7 +120,7 @@ app.put('/teachers/:id', async (req, res) => {
 });
 
 // DELETE teacher
-app.delete('/teachers/:id', async (req, res) => {
+app.delete('/teachers/:_id', async (req, res) => {
   try {
     const db = getDb();
     const id = req.params.id;
