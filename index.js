@@ -123,7 +123,7 @@ app.put('/teachers/:id', async (req, res) => {
 app.delete('/teachers/:id', async (req, res) => {
   try {
     const db = getDb();
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     
     const teacher = await db.collection('teachers').findOne({ id });
     if (!teacher) {
