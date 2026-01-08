@@ -629,7 +629,7 @@ async function startServer() {
   try {
     await client.connect();
     console.log('✅ Connected to MongoDB Atlas');
-    db = client.db('schoolDB');
+    db = client.db('schooldb');
     
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
