@@ -69,6 +69,12 @@ app.post('/teachers', async (req, res) => {
       });
     }
     
+    // Check for duplicate email
+    const existingTeacher = await db.collection('teachers').findOne({ email });
+    if (existingTeacher) {
+      return res.status(409).json({ error: 'Teacher with this email already exists' });
+    }
+    
     const newTeacher = {
       firstName,
       lastName,
@@ -101,6 +107,14 @@ app.put('/teachers/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields provided to update' });
     }
     
+    // Check for duplicate email if email is being updated
+    if (email && email !== existingTeacher.email) {
+      const emailExists = await db.collection('teachers').findOne({ email });
+      if (emailExists) {
+        return res.status(409).json({ error: 'Teacher with this email already exists' });
+      }
+    }
+    
     const updateFields = {};
     if (firstName) updateFields.firstName = firstName;
     if (lastName) updateFields.lastName = lastName;
@@ -129,13 +143,13 @@ app.delete('/teachers/:id', async (req, res) => {
     
     const coursesWithTeacher = await db.collection('courses').findOne({ teacherId: _id });
     if (coursesWithTeacher) {
-      return res.status(400).json({ 
+      return res.status(409).json({ 
         error: 'Cannot delete teacher. Teacher is assigned to one or more courses.' 
       });
     }
     
     await db.collection('teachers').deleteOne({ _id });
-    res.json({ message: 'Teacher deleted successfully', teacher });
+    res.status(204).end();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete teacher', details: error.message });
   }
@@ -239,6 +253,12 @@ app.post('/courses', async (req, res) => {
       return res.status(400).json({ error: 'Invalid teacherId. Teacher does not exist.' });
     }
     
+    // Check for duplicate course code
+    const existingCourse = await db.collection('courses').findOne({ code });
+    if (existingCourse) {
+      return res.status(409).json({ error: 'Course with this code already exists' });
+    }
+    
     const newCourse = {
       code,
       name,
@@ -270,6 +290,14 @@ app.put('/courses/:id', async (req, res) => {
     
     if (!code && !name && !teacherId && !semester && !room && !schedule) {
       return res.status(400).json({ error: 'No fields provided to update' });
+    }
+    
+    // Check for duplicate course code if code is being updated
+    if (code && code !== existingCourse.code) {
+      const codeExists = await db.collection('courses').findOne({ code });
+      if (codeExists) {
+        return res.status(409).json({ error: 'Course with this code already exists' });
+      }
     }
     
     const updateFields = {};
@@ -309,13 +337,13 @@ app.delete('/courses/:id', async (req, res) => {
     
     const testsForCourse = await db.collection('tests').findOne({ courseId: _id });
     if (testsForCourse) {
-      return res.status(400).json({ 
+      return res.status(409).json({ 
         error: 'Cannot delete course. Tests exist for this course.' 
       });
     }
     
     await db.collection('courses').deleteOne({ _id });
-    res.json({ message: 'Course deleted successfully', course });
+    res.status(204).end();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete course', details: error.message });
   }
@@ -413,6 +441,12 @@ app.post('/students', async (req, res) => {
       });
     }
     
+    // Check for duplicate student number
+    const existingStudent = await db.collection('students').findOne({ studentNumber });
+    if (existingStudent) {
+      return res.status(409).json({ error: 'Student with this student number already exists' });
+    }
+    
     const newStudent = {
       firstName,
       lastName,
@@ -445,6 +479,14 @@ app.put('/students/:id', async (req, res) => {
       return res.status(400).json({ error: 'No fields provided to update' });
     }
     
+    // Check for duplicate student number if studentNumber is being updated
+    if (studentNumber && studentNumber !== existingStudent.studentNumber) {
+      const numberExists = await db.collection('students').findOne({ studentNumber });
+      if (numberExists) {
+        return res.status(409).json({ error: 'Student with this student number already exists' });
+      }
+    }
+    
     const updateFields = {};
     if (firstName) updateFields.firstName = firstName;
     if (lastName) updateFields.lastName = lastName;
@@ -473,13 +515,13 @@ app.delete('/students/:id', async (req, res) => {
     
     const testsForStudent = await db.collection('tests').findOne({ studentId: _id });
     if (testsForStudent) {
-      return res.status(400).json({ 
+      return res.status(409).json({ 
         error: 'Cannot delete student. Test records exist for this student.' 
       });
     }
     
     await db.collection('students').deleteOne({ _id });
-    res.json({ message: 'Student deleted successfully', student });
+    res.status(204).end();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete student', details: error.message });
   }
@@ -616,7 +658,7 @@ app.delete('/tests/:id', async (req, res) => {
     }
     
     await db.collection('tests').deleteOne({ _id });
-    res.json({ message: 'Test deleted successfully', test });
+    res.status(204).end();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete test', details: error.message });
   }
